@@ -14,6 +14,7 @@ import {
 import { ITestCaseHookParameter } from '@cucumber/cucumber/lib/support_code_library_builder/types';
 import { ensureDir } from 'fs-extra';
 
+// let webContext;
 let browser: ChromiumBrowser | FirefoxBrowser | WebKitBrowser;
 const tracesDir = 'traces';
 
@@ -52,6 +53,9 @@ Before(async function (this: ICustomWorld, { pickle }: ITestCaseHookParameter) {
   this.testName = pickle.name.replace(/\W/g, '-');
   // customize the [browser context](https://playwright.dev/docs/next/api/class-browser#browsernewcontextoptions)
   this.context = await browser.newContext({
+    // inject the cookies into the new browser, safe it to a global variable
+    // login will be bypassed
+    storageState: 'state.json',
     acceptDownloads: true,
     recordVideo: process.env.PWVIDEO ? { dir: 'screenshots' } : undefined,
     viewport: { width: 1200, height: 800 },
@@ -71,6 +75,16 @@ Before(async function (this: ICustomWorld, { pickle }: ITestCaseHookParameter) {
   this.feature = pickle;
 });
 
+/*
+Before(async () => {
+  // inject the cookies into the new browser, safe it to a global variable
+  // login will be bypassed
+  webContext = await browser.newContext({ storageState: 'state.json' });
+  const page = await webContext.newPage();
+  return page;
+});
+*/
+
 After(async function (this: ICustomWorld, { result }: ITestCaseHookParameter) {
   if (result) {
     await this.attach(`Status: ${result?.status}. Duration:${result.duration?.seconds}s`);
@@ -79,9 +93,8 @@ After(async function (this: ICustomWorld, { result }: ITestCaseHookParameter) {
       const image = await this.page?.screenshot();
       image && (await this.attach(image, 'image/png'));
       await this.context?.tracing.stop({
-        path: `${tracesDir}/${this.testName}-${
-          this.startTime?.toISOString().split('.')[0]
-        }trace.zip`,
+        path: `${tracesDir}/${this.testName}-${this.startTime?.toISOString().split('.')[0]
+          }trace.zip`,
       });
     }
   }
